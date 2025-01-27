@@ -18,21 +18,67 @@ export class AuthController {
         this.authService = new AuthService();
     }
 
+    private sanitizeUserResponse(user: any) {
+        const { password, ...userWithoutPassword } = user;
+        if (userWithoutPassword.role) {
+            const { users, ...roleWithoutUsers } = userWithoutPassword.role;
+            userWithoutPassword.role = roleWithoutUsers;
+        }
+        return userWithoutPassword;
+    }
+
     register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const userData = req.body as RegisterDto;
             const user = await this.authService.register(userData);
-            const { password, ...userWithoutPassword } = user;
-            successResponse(res, userWithoutPassword, 'User registered successfully', StatusCodes.CREATED);
+            const sanitizedUser = this.sanitizeUserResponse(user);
+            successResponse(res, sanitizedUser, 'User registered successfully', StatusCodes.CREATED);
         } catch (error: any) {
-            next(new ApiError(StatusCodes.BAD_REQUEST, 'Registration failed', { error: error.message }));
+            // Handle specific database errors
+            if (error.code === '23505') { // PostgreSQL unique violation error code
+                // Get the constraint name from the error message
+                const constraintMatch = error.detail?.match(/\"(.+?)\"/);
+                const constraint = constraintMatch ? constraintMatch[1] : '';
+                
+                // Get the value that caused the duplicate from the error message
+                const valueMatch = error.detail?.match(/=\((.+?)\)/);
+                const value = valueMatch ? valueMatch[1] : '';
+                
+                // Map constraint names to user-friendly field names and messages
+                let fieldName = 'field';
+                let message = 'Registration failed due to duplicate entry';
+                
+                if (constraint.includes('users_email_key')) {
+                    fieldName = 'email';
+                    message = `The email address "${value}" is already registered. Please use a different email or try logging in.`;
+                } else if (constraint.includes('users_username_key')) {
+                    fieldName = 'username';
+                    message = `The username "${value}" is already taken. Please choose a different username.`;
+                }
+                
+                next(new ApiError(StatusCodes.CONFLICT, message, { 
+                    error: error.message,
+                    field: fieldName,
+                    value: value
+                }));
+            } else if (error instanceof ApiError) {
+                // If it's already an ApiError, pass it through
+                next(error);
+            } else {
+                // For other errors, create a generic error message
+                next(new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    'Registration failed. Please check your input and try again.',
+                    { error: error.message }
+                ));
+            }
         }
     };
 
     login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { emailOrUsername, password } = req.body as LoginDto;
-            const { user, accessToken, refreshToken } = await this.authService.login(emailOrUsername, password, req);
+            const { user, accessToken, refreshToken, expiresIn } = await this.authService.login(emailOrUsername, password, req);
 
             // Set refresh token in HTTP-only cookie
             res.cookie('refreshToken', refreshToken, {
@@ -42,10 +88,22 @@ export class AuthController {
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
 
-            const { password: _, ...userWithoutPassword } = user;
-            successResponse(res, { user: userWithoutPassword, accessToken }, 'Login successful', StatusCodes.OK);
+            const sanitizedUser = this.sanitizeUserResponse(user);
+            successResponse(res, { 
+                ...sanitizedUser, 
+                accessToken,
+                expiresIn
+            }, 'Login successful', StatusCodes.OK);
         } catch (error: any) {
-            next(new ApiError(StatusCodes.UNAUTHORIZED, 'Login failed', { error: error.message }));
+            if (error instanceof ApiError) {
+                next(error);
+            } else {
+                next(new ApiError(
+                    StatusCodes.UNAUTHORIZED, 
+                    'Invalid credentials. Please check your email/username and password.',
+                    { error: error.message }
+                ));
+            }
         }
     };
 
@@ -62,9 +120,20 @@ export class AuthController {
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
 
-            successResponse(res, { accessToken: result.accessToken }, 'Token refreshed successfully', StatusCodes.OK);
+            successResponse(res, { 
+                accessToken: result.accessToken,
+                expiresIn: result.expiresIn
+            }, 'Token refreshed successfully', StatusCodes.OK);
         } catch (error: any) {
-            next(new ApiError(StatusCodes.UNAUTHORIZED, 'Token refresh failed', { error: error.message }));
+            if (error instanceof ApiError) {
+                next(error);
+            } else {
+                next(new ApiError(
+                    StatusCodes.UNAUTHORIZED, 
+                    'Token refresh failed. Please log in again.',
+                    { error: error.message }
+                ));
+            }
         }
     };
 
@@ -77,9 +146,19 @@ export class AuthController {
 
             // Clear refresh token cookie
             res.clearCookie('refreshToken');
-            successResponse(res, null, 'Logout successful', StatusCodes.OK);
+            successResponse(res, { 
+                message: 'Logged out successfully' 
+            }, 'Logout successful', StatusCodes.OK);
         } catch (error: any) {
-            next(new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Logout failed', { error: error.message }));
+            if (error instanceof ApiError) {
+                next(error);
+            } else {
+                next(new ApiError(
+                    StatusCodes.INTERNAL_SERVER_ERROR, 
+                    'Logout failed. Please try again.',
+                    { error: error.message }
+                ));
+            }
         }
     };
 } 

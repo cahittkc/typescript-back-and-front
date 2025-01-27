@@ -18,20 +18,20 @@ export class RoleRepository {
     async findById(id: number): Promise<Role | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ['user']
+            relations: ['users']
         });
     }
 
     async findByName(name: UserRole): Promise<Role | null> {
         return await this.repository.findOne({
             where: { name },
-            relations: ['user']
+            relations: ['users']
         });
     }
 
     async findAll(): Promise<Role[]> {
         return await this.repository.find({
-            relations: ['user']
+            relations: ['users']
         });
     }
 

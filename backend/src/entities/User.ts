@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from "typeorm";
 import { IsEmail } from "class-validator";
 import { RefreshToken } from './RefreshToken';
 import { Role } from './Role';
@@ -26,8 +26,11 @@ export class User {
     @Column({ nullable: false })
     password: string;
 
-    @OneToOne(() => Role, role => role.user, { eager: true })
-    @JoinColumn()
+    @Column({ nullable: true })
+    roleId: number;
+
+    @ManyToOne(() => Role, role => role.users, { eager: true })
+    @JoinColumn({ name: "roleId" })
     role: Role;
 
     @Column({ type: 'text', nullable: true })
