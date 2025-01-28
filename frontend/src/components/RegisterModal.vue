@@ -73,11 +73,11 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
        @click="emit('close')">
     <div class="min-h-screen flex items-center justify-center p-4"
          @click.stop>
-      <div class="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
+      <div class="bg-white dark:bg-dark-bg-secondary w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all duration-300 scale-100 opacity-100">
         <div class="flex justify-between items-center mb-8">
-          <h2 class="text-2xl font-bold text-gray-800">Create Account</h2>
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-dark-text-primary">Create Account</h2>
           <button @click="emit('close')" 
-                  class="text-gray-500 hover:text-gray-700 transition-colors">
+                  class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -85,14 +85,14 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
         </div>
 
         <!-- Error Message -->
-        <div v-if="error" class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+        <div v-if="error" class="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400">
           {{ error }}
         </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-6">
           <!-- Role Selection -->
           <div>
-            <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="role" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Account Type
             </label>
             <select
@@ -100,7 +100,7 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
               v-model="role"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
             >
               <option value="client">Client</option>
               <option value="freelancer">Freelancer</option>
@@ -109,7 +109,7 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
 
           <!-- Username -->
           <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="username" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Username
             </label>
             <input
@@ -118,14 +118,14 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
               v-model="username"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
               placeholder="Choose a username"
             />
           </div>
 
           <!-- First Name -->
           <div>
-            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               First Name
             </label>
             <input
@@ -134,14 +134,14 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
               v-model="firstName"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
               placeholder="Enter your first name"
             />
           </div>
 
           <!-- Last Name -->
           <div>
-            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="lastName" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Last Name
             </label>
             <input
@@ -150,14 +150,14 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
               v-model="lastName"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
               placeholder="Enter your last name"
             />
           </div>
 
           <!-- Email -->
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Email Address
             </label>
             <input
@@ -166,14 +166,14 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
               v-model="email"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
               placeholder="Enter your email"
             />
           </div>
 
           <!-- Password -->
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Password
             </label>
             <div class="relative">
@@ -183,13 +183,13 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
                 v-model="password"
                 required
                 :disabled="loading"
-                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
                 placeholder="Choose a password"
               />
               <button
                 type="button"
                 @click="togglePasswordVisibility('password')"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 <svg
                   v-if="showPassword"
@@ -233,7 +233,7 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
 
           <!-- Confirm Password -->
           <div>
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2">
               Confirm Password
             </label>
             <div class="relative">
@@ -243,13 +243,13 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
                 v-model="confirmPassword"
                 required
                 :disabled="loading"
-                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition-colors bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
                 placeholder="Confirm your password"
               />
               <button
                 type="button"
                 @click="togglePasswordVisibility('confirmPassword')"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 <svg
                   v-if="showConfirmPassword"
@@ -294,7 +294,7 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-blue-600"
+            class="w-full bg-blue-600 dark:bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500"
           >
             <span v-if="loading" class="flex items-center justify-center">
               <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -306,12 +306,12 @@ const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
             <span v-else>Create Account</span>
           </button>
 
-          <div class="text-center text-sm text-gray-600">
+          <div class="text-center text-sm text-gray-600 dark:text-dark-text-secondary">
             Already have an account?
             <button
               type="button"
               @click="emit('switch-to-login')"
-              class="text-blue-600 hover:text-blue-800 transition-colors font-medium"
+              class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors font-medium"
             >
               Sign in
             </button>

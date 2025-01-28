@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { LoginPayload, AuthResponse } from '@/types'
 
 // Types
 export interface User {
@@ -42,12 +43,6 @@ export interface RegisterCredentials {
   role: 'client' | 'freelancer'
 }
 
-export interface AuthResponse {
-  user: User
-  accessToken: string
-  expiresIn: number
-}
-
 export interface ApiResponse<T> {
   success: boolean
   message?: string
@@ -69,14 +64,34 @@ const api = axios.create({
   }
 })
 
+// Flag to track if we're refreshing the token
+let isRefreshing = false
+// Store callbacks for requests that are waiting for the new token
+let refreshSubscribers: ((token: string) => void)[] = []
+
+// Subscribe to token refresh
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb)
+}
+
+// Execute subscribers with new token
+const onTokenRefreshed = (token: string) => {
+  refreshSubscribers.forEach(cb => cb(token))
+  refreshSubscribers = []
+}
+
 // Auth Service
 export const authService = {
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/register', credentials)
-    console.log(response.data);
-    // Store token in localStorage  
-    if (response.data.accessToken) {
-      localStorage.setItem('token', response.data.accessToken)
+    
+    // Store auth data in localStorage  
+    if (response.data.data) {
+      const { user, accessToken, refreshToken, expiresIn } = response.data.data
+      localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
+      localStorage.setItem('expiresIn', expiresIn.toString())
     }
     
     return response.data
@@ -85,9 +100,19 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', credentials)
     
-    // Store token in localStorage
-    if (response.data.accessToken) {
-      localStorage.setItem('token', response.data.accessToken)
+    console.log('Login Response:', response.data)
+    
+    // Store auth data in localStorage
+    if (response.data.success) {
+      const userData = response.data.data
+      const { accessToken, expiresIn } = userData
+      
+      // Remove tokens from user object before storing
+      const { accessToken: _, expiresIn: __, ...userWithoutTokens } = userData
+      
+      localStorage.setItem('user', JSON.stringify(userWithoutTokens))
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('expiresIn', expiresIn.toString())
     }
     
     return response.data
@@ -99,58 +124,98 @@ export const authService = {
   },
 
   logout() {
-    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('expiresIn')
   },
 
   getToken() {
-    return localStorage.getItem('token')
+    return localStorage.getItem('accessToken')
   }
 }
 
-// Add request interceptor to include token in requests
+// Add request interceptor
 api.interceptors.request.use(
-  (config) => {
-    const token = authService.getToken()
+  config => {
+    const token = localStorage.getItem('accessToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => {
+  error => {
     return Promise.reject(error)
   }
 )
 
-// Add response interceptor to handle errors
+// Add response interceptor
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config
 
-    // If error is 401 and not a retry
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-
-      try {
-        // Try to refresh token
-        const response = await authService.refreshToken()
-        
-        // Update token
-        localStorage.setItem('token', response.accessToken)
-        
-        // Update Authorization header
-        originalRequest.headers.Authorization = `Bearer ${response.accessToken}`
-        
-        // Retry original request
-        return api(originalRequest)
-      } catch (refreshError) {
-        // If refresh fails, logout
-        authService.logout()
-        return Promise.reject(refreshError)
-      }
+    // If error is not 401 or request already retried, reject
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error)
     }
 
-    return Promise.reject(error)
+    // Check if we have an active user session
+    const user = localStorage.getItem('user')
+    const refreshToken = localStorage.getItem('refreshToken')
+    if (!user || !refreshToken) {
+      // No active session, clear any remaining auth data
+      localStorage.removeItem('user')
+      localStorage.removeItem('accessToken') 
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('expiresIn')
+      return Promise.reject(error)
+    }
+
+    // If already refreshing, wait for the new token
+    if (isRefreshing) {
+      return new Promise(resolve => {
+        subscribeTokenRefresh(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          resolve(api(originalRequest))
+        })
+      })
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      const response = await api.post<AuthResponse>('/auth/refresh-token', {
+        refreshToken
+      })
+
+      const { accessToken } = response.data.data
+      localStorage.setItem('accessToken', accessToken)
+
+      // Update authorization header
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`
+
+      // Notify subscribers about new token
+      onTokenRefreshed(accessToken)
+      isRefreshing = false
+
+      // Retry original request
+      return api(originalRequest)
+    } catch (refreshError) {
+      isRefreshing = false
+      refreshSubscribers = []
+      
+      // Clear auth data and redirect to login
+      localStorage.removeItem('user')
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('expiresIn')
+      window.location.reload()
+      
+      return Promise.reject(refreshError)
+    }
   }
 )
 

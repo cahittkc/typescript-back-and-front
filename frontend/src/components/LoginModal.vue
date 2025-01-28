@@ -18,23 +18,19 @@ const handleSubmit = async () => {
     loading.value = true
     error.value = ''
     
-    const response = await authStore.login(emailOrUsername.value, password.value)
-    
-    // Check if login was successful
+    const response = await authStore.login({
+      emailOrUsername: emailOrUsername.value,
+      password: password.value
+    })
+
     if (response.success) {
-      emit('login-success', response.data)
+      emit('login-success')
       emit('close')
     } else {
-      error.value = response.message || 'Login failed. Please try again.'
+      error.value = response.message || 'An error occurred during login'
     }
   } catch (err: any) {
-    const responseData = err.response?.data
-    error.value = responseData?.message || 'An error occurred during login. Please try again.'
-    
-    // If unauthorized, show register link
-    if (err.response?.status === 401) {
-      showRegisterLink.value = true
-    }
+    error.value = err.response?.data?.message || 'An error occurred during login'
   } finally {
     loading.value = false
   }
@@ -88,7 +84,7 @@ const togglePasswordVisibility = () => {
               v-model="emailOrUsername"
               required
               :disabled="loading"
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder="Enter your email or username"
             />
           </div>
@@ -104,7 +100,7 @@ const togglePasswordVisibility = () => {
                 v-model="password"
                 required
                 :disabled="loading"
-                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter your password"
               />
               <button
