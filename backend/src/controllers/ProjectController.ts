@@ -7,6 +7,7 @@ import { StatusCodes } from 'http-status-codes';
 import { UserRole } from '../enums/UserRole';
 import { ProjectStatus } from '../enums/ProjectStatus';
 import { GetProjectsQueryDto } from '../dtos/project.dto';
+import { Project } from '../entities/Project';
 
 export class ProjectController {
     private projectRepository: ProjectRepository;
@@ -34,7 +35,13 @@ export class ProjectController {
             sanitizedProject.proposals = project.proposals.map((proposal: any) => {
                 if (proposal.freelancer) {
                     const { password, role, ...freelancerData } = proposal.freelancer;
-                    return { ...proposal, freelancer: freelancerData };
+                    return { 
+                        ...proposal, 
+                        freelancer: {
+                            ...freelancerData,
+                            fullName: `${proposal.freelancer.firstName} ${proposal.freelancer.lastName}`
+                        }
+                    };
                 }
                 return proposal;
             });
@@ -54,8 +61,8 @@ export class ProjectController {
                 throw ApiError.notFound('Client not found');
             }
 
-            if (client.role.name !== UserRole.CLIENT) {
-                throw ApiError.forbidden('Only clients can create projects');
+            if (client.role.name !== UserRole.CLIENT && client.role.name !== UserRole.ADMIN) {
+                throw ApiError.forbidden('Only clients and admins can create projects');
             }
 
             const project = await this.projectRepository.create({
@@ -100,7 +107,12 @@ export class ProjectController {
 
     getProjectById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const project = await this.projectRepository.findById(Number(req.params.id));
+            const id = Number(req.params.id);
+            if (isNaN(id)) {
+                throw ApiError.badRequest('Invalid project ID');
+            }
+
+            const project = await this.projectRepository.findById(id);
             if (!project) {
                 throw ApiError.notFound('Project not found');
             }
@@ -119,10 +131,10 @@ export class ProjectController {
                 throw ApiError.notFound('User not found');
             }
 
-            let projects;
+            let projects: Project[] = [];
             if (user.role.name === UserRole.CLIENT) {
                 projects = await this.projectRepository.findByClient(user.id);
-            } else {
+            } else if (user.role.name === UserRole.FREELANCER) {
                 projects = await this.projectRepository.findByFreelancer(user.id);
             }
 

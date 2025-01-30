@@ -51,10 +51,11 @@ export interface ApiResponse<T> {
 
 export interface LoginResponse extends AuthResponse {}
 export interface RegisterResponse extends AuthResponse {}
-export interface RefreshTokenResponse {
+
+export interface RefreshTokenResponse extends ApiResponse<{
   accessToken: string
   expiresIn: number
-}
+}> {}
 
 // API Client
 const api = axios.create({
@@ -64,83 +65,38 @@ const api = axios.create({
   }
 })
 
-// Flag to track if we're refreshing the token
-let isRefreshing = false
-// Store callbacks for requests that are waiting for the new token
-let refreshSubscribers: ((token: string) => void)[] = []
-
-// Subscribe to token refresh
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb)
-}
-
-// Execute subscribers with new token
-const onTokenRefreshed = (token: string) => {
-  refreshSubscribers.forEach(cb => cb(token))
-  refreshSubscribers = []
-}
-
 // Auth Service
 export const authService = {
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/register', credentials)
-    
-    // Store auth data in localStorage  
-    if (response.data.data) {
-      const { user, accessToken, refreshToken, expiresIn } = response.data.data
-      localStorage.setItem('user', JSON.stringify(user))
-      localStorage.setItem('accessToken', accessToken)
-      localStorage.setItem('refreshToken', refreshToken)
-      localStorage.setItem('expiresIn', expiresIn.toString())
-    }
-    
     return response.data
   },
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', credentials)
-    
-    console.log('Login Response:', response.data)
-    
-    // Store auth data in localStorage
-    if (response.data.success) {
-      const userData = response.data.data
-      const { accessToken, expiresIn } = userData
-      
-      // Remove tokens from user object before storing
-      const { accessToken: _, expiresIn: __, ...userWithoutTokens } = userData
-      
-      localStorage.setItem('user', JSON.stringify(userWithoutTokens))
-      localStorage.setItem('accessToken', accessToken)
-      localStorage.setItem('expiresIn', expiresIn.toString())
-    }
-    
     return response.data
   },
 
-  async refreshToken(): Promise<RefreshTokenResponse> {
-    const response = await api.post<RefreshTokenResponse>('/auth/refresh-token')
+  async logout(): Promise<ApiResponse<string>> {
+    const response = await api.post<ApiResponse<string>>('/auth/logout')
     return response.data
   },
 
-  logout() {
-    localStorage.removeItem('user')
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('expiresIn')
-  },
-
-  getToken() {
-    return localStorage.getItem('accessToken')
+  async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
+    const response = await api.post<RefreshTokenResponse>('/auth/refresh-token', { refreshToken })
+    return response.data
   }
 }
 
 // Add request interceptor
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('accessToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const authData = localStorage.getItem('authStore')
+    if (authData) {
+      const { accessToken } = JSON.parse(authData)
+      if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`
+      }
     }
     return config
   },
@@ -153,69 +109,52 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => response,
   async error => {
-    const originalRequest = error.config
-
     // If error is not 401 or request already retried, reject
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    if (error.response?.status !== 401 || error.config._retry) {
       return Promise.reject(error)
     }
 
-    // Check if we have an active user session
-    const user = localStorage.getItem('user')
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (!user || !refreshToken) {
-      // No active session, clear any remaining auth data
-      localStorage.removeItem('user')
-      localStorage.removeItem('accessToken') 
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('expiresIn')
-      return Promise.reject(error)
-    }
-
-    // If already refreshing, wait for the new token
-    if (isRefreshing) {
-      return new Promise(resolve => {
-        subscribeTokenRefresh(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          resolve(api(originalRequest))
-        })
-      })
-    }
-
-    originalRequest._retry = true
-    isRefreshing = true
+    error.config._retry = true
 
     try {
-      const response = await api.post<AuthResponse>('/auth/refresh-token', {
-        refreshToken
-      })
+      const authData = localStorage.getItem('authStore')
+      if (!authData) {
+        throw new Error('No auth data found')
+      }
 
-      const { accessToken } = response.data.data
-      localStorage.setItem('accessToken', accessToken)
+      const { refreshToken } = JSON.parse(authData)
+      if (!refreshToken) {
+        throw new Error('No refresh token found')
+      }
 
-      // Update authorization header
-      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
-      originalRequest.headers.Authorization = `Bearer ${accessToken}`
+      const response = await authService.refreshToken(refreshToken)
+      if (response.success) {
+        const { accessToken, expiresIn } = response.data
+        
+        // Update auth store
+        const currentAuthData = JSON.parse(authData)
+        const newAuthData = {
+          ...currentAuthData,
+          accessToken,
+          expiresIn
+        }
+        localStorage.setItem('authStore', JSON.stringify(newAuthData))
 
-      // Notify subscribers about new token
-      onTokenRefreshed(accessToken)
-      isRefreshing = false
+        // Update Authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+        error.config.headers.Authorization = `Bearer ${accessToken}`
 
-      // Retry original request
-      return api(originalRequest)
+        // Retry the original request
+        return api(error.config)
+      }
     } catch (refreshError) {
-      isRefreshing = false
-      refreshSubscribers = []
-      
       // Clear auth data and redirect to login
-      localStorage.removeItem('user')
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('expiresIn')
+      localStorage.removeItem('authStore')
+      delete api.defaults.headers.common['Authorization']
       window.location.reload()
-      
-      return Promise.reject(refreshError)
     }
+    
+    return Promise.reject(error)
   }
 )
 

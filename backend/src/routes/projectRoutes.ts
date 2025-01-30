@@ -7,8 +7,17 @@ import { CreateProjectDto, UpdateProjectDto, AssignFreelancerDto, CompleteProjec
 const router = Router();
 const projectController = new ProjectController();
 
-// Apply authentication middleware to all routes
+// Public routes (no authentication required)
+router.get('/', validateRequest(GetProjectsQueryDto), projectController.getAllProjects);
+
+// Protected routes (authentication required)
 router.use(authenticate);
+
+// Get my projects (should be before /:id to avoid conflict)
+router.get('/my-projects', projectController.getMyProjects);
+
+// Get project by ID (should be after specific routes)
+router.get('/:id', projectController.getProjectById);
 
 /**
  * @swagger
@@ -150,58 +159,6 @@ router.post('/',
  *         description: Unauthorized
  */
 router.get('/', validateRequest(GetProjectsQueryDto), projectController.getAllProjects);
-
-/**
- * @swagger
- * /api/projects/my-projects:
- *   get:
- *     tags: [Projects]
- *     summary: Get user's projects
- *     description: Retrieve all projects created by the client or assigned to the freelancer
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Projects retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *       401:
- *         description: Unauthorized
- */
-router.get('/my-projects', projectController.getMyProjects);
-
-/**
- * @swagger
- * /api/projects/{id}:
- *   get:
- *     tags: [Projects]
- *     summary: Get project by ID
- *     description: Retrieve a project by its ID
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: number
- *     responses:
- *       200:
- *         description: Project retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/Success'
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Project not found
- */
-router.get('/:id', projectController.getProjectById);
 
 /**
  * @swagger

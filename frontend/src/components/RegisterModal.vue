@@ -41,8 +41,18 @@ const handleSubmit = async () => {
     
     // Check if registration was successful
     if (response.success) {
-      emit('register-success', response.data)
-      emit('close')
+      // Auto login after successful registration
+      const loginResponse = await authStore.login({
+        emailOrUsername: email.value,
+        password: password.value
+      })
+
+      if (loginResponse.success) {
+        emit('register-success')
+        emit('close')
+      } else {
+        error.value = 'Registration successful but auto-login failed. Please try logging in manually.'
+      }
     } else {
       error.value = response.message || 'Registration failed. Please try again.'
     }

@@ -122,7 +122,7 @@ export class AuthController {
 
             successResponse(res, { 
                 accessToken: result.accessToken,
-                expiresIn: result.expiresIn
+                expiresIn: 900 // 15 minutes in seconds
             }, 'Token refreshed successfully', StatusCodes.OK);
         } catch (error: any) {
             if (error instanceof ApiError) {
